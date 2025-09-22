@@ -1,13 +1,12 @@
 name: CI/CD Pipeline
 
 on:
-  workflow_dispatch: # manual trigger
+  workflow_dispatch:
   push:
     branches:
       - main
 
 jobs:
-  # ---------------- Tests ----------------
   tests:
     name: Unit tests
     runs-on: ubuntu-latest
@@ -17,7 +16,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
-          java-version: '11'
+          java-version: '17'
       - name: Cache Maven packages
         uses: actions/cache@v3
         with:
@@ -27,19 +26,17 @@ jobs:
       - name: Run Tests
         run: mvn -B test
 
-  # ---------------- SonarCloud ----------------
   sonar:
     needs: tests
     name: SonarCloud analysis
     runs-on: ubuntu-latest
-    if: secrets.SONAR_TOKEN != '' # Skip job if no token is set
     steps:
       - uses: actions/checkout@v3
       - name: Set up JDK
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
-          java-version: '11'
+          java-version: '17'
       - name: Cache SonarCloud packages
         uses: actions/cache@v3
         with:
@@ -53,6 +50,7 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
       - name: Analyze with SonarCloud
+        if: ${{ secrets.SONAR_TOKEN }}
         run: mvn -B verify sonar:sonar \
           -Dsonar.projectKey=Narasimha142_Hands-on-ci-cd-for-springboot-apps \
           -Dsonar.organization=narasimha142 \
@@ -62,9 +60,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  # ---------------- Build ----------------
   build:
-    needs: [tests, sonar] # will wait for sonar (skips if no token)
+    needs: [tests, sonar]
     name: Build
     runs-on: ubuntu-latest
     steps:
@@ -73,7 +70,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
-          java-version: '11'
+          java-version: '17'
       - name: Cache Maven packages
         uses: actions/cache@v3
         with:
@@ -86,9 +83,8 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: artifact
-          path: target/data-0.0.1-SNAPSHOT.jar
+          path: target/demo-0.0.1-SNAPSHOT.jar
 
-  # ---------------- Deploy ----------------
   deploy:
     needs: build
     name: Deploy
@@ -109,4 +105,4 @@ jobs:
           environment_name: Springbootdeploy-env
           version_label: ${{ github.SHA }}
           region: us-east-1
-          deployment_package: data-0.0.1-SNAPSHOT.jar
+          deployment_package: demo-0.0.1-SNAPSHOT.jar

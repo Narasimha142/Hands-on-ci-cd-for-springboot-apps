@@ -1,15 +1,13 @@
 name: CI/CD Pipeline
 
 on:
-  # Manually trigger workflow runs
   workflow_dispatch:
-  # Trigger the workflow on push from the main branch
   push:
     branches:
       - main
 
 jobs:
-  # Test job
+  # Unit tests
   tests:
     name: Unit tests
     runs-on: ubuntu-latest
@@ -26,7 +24,7 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
       - name: Run Tests
-        run: mvn -B test
+        run: mvn -B test -Ddistribution=default
 
   # SonarCloud analysis
   sonar:
@@ -56,12 +54,13 @@ jobs:
               -Dsonar.projectKey=narasimha142_springboot-app \
               -Dsonar.organization=narasimha142 \
               -Dsonar.host.url=https://sonarcloud.io \
-              -Dsonar.login=$SONAR_TOKEN
+              -Dsonar.login=$SONAR_TOKEN \
+              -Ddistribution=default
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  # Build job (optional, just to check build)
+  # Build job (optional)
   build:
     needs: sonar
     name: Build
@@ -79,4 +78,4 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
       - name: Build with Maven
-        run: mvn -B package -DskipTests --file pom.xml
+        run: mvn -B package -DskipTests -Ddistribution=default --file pom.xml

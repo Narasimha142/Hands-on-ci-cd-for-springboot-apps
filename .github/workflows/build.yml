@@ -1,63 +1,57 @@
 name: CI/CD Pipeline
 
 on:
-  workflow_dispatch: # Manually trigger
+  workflow_dispatch: # manual trigger
   push:
     branches:
       - main
 
 jobs:
-  # Test's job
+  # ---------------- Tests ----------------
   tests:
     name: Unit tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
       - name: Set up JDK
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: '11'
-
       - name: Cache Maven packages
         uses: actions/cache@v3
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
-
       - name: Run Tests
         run: mvn -B test
 
-  # Sonar's Job
+  # ---------------- SonarCloud ----------------
   sonar:
     needs: tests
     name: SonarCloud analysis
     runs-on: ubuntu-latest
+    if: secrets.SONAR_TOKEN != '' # Skip job if no token is set
     steps:
       - uses: actions/checkout@v3
-
       - name: Set up JDK
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: '11'
-
       - name: Cache SonarCloud packages
         uses: actions/cache@v3
         with:
           path: ~/.sonar/cache
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
-
       - name: Cache Maven packages
         uses: actions/cache@v3
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
-
       - name: Analyze with SonarCloud
         run: mvn -B verify sonar:sonar \
           -Dsonar.projectKey=Narasimha142_Hands-on-ci-cd-for-springboot-apps \
@@ -68,37 +62,33 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  # Build's job
+  # ---------------- Build ----------------
   build:
-    needs: sonar
+    needs: [tests, sonar] # will wait for sonar (skips if no token)
     name: Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
       - name: Set up JDK
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: '11'
-
       - name: Cache Maven packages
         uses: actions/cache@v3
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
-
       - name: Build with Maven
         run: mvn -B package -DskipTests --file pom.xml
-
       - name: Upload JAR
         uses: actions/upload-artifact@v3
         with:
           name: artifact
           path: target/data-0.0.1-SNAPSHOT.jar
 
-  # Deploy's job
+  # ---------------- Deploy ----------------
   deploy:
     needs: build
     name: Deploy
@@ -108,7 +98,6 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: artifact
-
       - name: Deploy to EB
         uses: einaregilsson/beanstalk-deploy@v13
         with:

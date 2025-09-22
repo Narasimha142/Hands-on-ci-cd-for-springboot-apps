@@ -61,7 +61,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      # Debug step to confirm secrets (optional)
+      # Debug step (optional)
       - name: Debug SonarCloud setup
         run: |
           echo "SONAR_TOKEN is set? ${SONAR_TOKEN:+yes}"
@@ -76,7 +76,8 @@ jobs:
             -Dsonar.projectKey=Hands-on-ci-cd-for-springboot-apps \
             -Dsonar.organization=Narasimha142 \
             -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.login=$SONAR_TOKEN
+            -Dsonar.login=$SONAR_TOKEN \
+            -Dsonar.branch.name=main
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

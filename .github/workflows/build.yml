@@ -1,13 +1,15 @@
 name: CI/CD Pipeline
 
 on:
-  workflow_dispatch: # Manual trigger
+  # Manually trigger workflow runs
+  workflow_dispatch:
+  # Trigger the workflow on push from the main branch
   push:
     branches:
       - main
 
 jobs:
-  # ---------------- Unit Tests ----------------
+  # Test job
   tests:
     name: Unit tests
     runs-on: ubuntu-latest
@@ -16,7 +18,6 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v3
         with:
-          distribution: 'temurin'
           java-version: '11'
       - name: Cache Maven packages
         uses: actions/cache@v3
@@ -27,7 +28,7 @@ jobs:
       - name: Run Tests
         run: mvn -B test
 
-  # ---------------- SonarCloud ----------------
+  # SonarCloud analysis
   sonar:
     needs: tests
     name: SonarCloud analysis
@@ -37,7 +38,6 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v3
         with:
-          distribution: 'temurin'
           java-version: '11'
       - name: Cache SonarCloud packages
         uses: actions/cache@v3
@@ -52,18 +52,18 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
       - name: Analyze with SonarCloud
-
         run: mvn -B verify sonar:sonar \
-          -Dsonar.projectKey=Narasimha142_Hands-on-ci-cd-for-springboot-apps \
-          -Dsonar.organization=narasimha142 \
-          -Dsonar.host.url=https://sonarcloud.io \
-          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+              -Dsonar.projectKey=narasimha142_springboot-app \
+              -Dsonar.organization=narasimha142 \
+              -Dsonar.host.url=https://sonarcloud.io \
+              -Dsonar.login=$SONAR_TOKEN
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  # ---------------- Build ----------------
+  # Build job (optional, just to check build)
   build:
-    needs: [tests, sonar]
+    needs: sonar
     name: Build
     runs-on: ubuntu-latest
     steps:
@@ -71,7 +71,6 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v3
         with:
-          distribution: 'temurin'
           java-version: '11'
       - name: Cache Maven packages
         uses: actions/cache@v3
@@ -81,31 +80,3 @@ jobs:
           restore-keys: ${{ runner.os }}-m2
       - name: Build with Maven
         run: mvn -B package -DskipTests --file pom.xml
-      - name: Upload JAR
-        uses: actions/upload-artifact@v3
-        with:
-          name: artifact
-          path: target/data-0.0.1-SNAPSHOT.jar
-
-  # ---------------- Deploy ----------------
-  deploy:
-    needs: build
-    name: Deploy
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download JAR
-        uses: actions/download-artifact@v3
-        with:
-          name: artifact
-      - name: Deploy to EB
-        uses: einaregilsson/beanstalk-deploy@v13
-        with:
-          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws_session_token: ${{ secrets.AWS_SESSION_TOKEN }}
-          use_existing_version_if_available: false
-          application_name: spring-boot-deploy
-          environment_name: Springbootdeploy-env
-          version_label: ${{ github.SHA }}
-          region: us-east-1
-          deployment_package: data-0.0.1-SNAPSHOT.jar

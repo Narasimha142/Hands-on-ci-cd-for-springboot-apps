@@ -7,100 +7,59 @@ on:
       - main
 
 jobs:
-  # Unit Tests
-  tests:
-    name: Unit Tests
+  # Build, test, and analyze in one job to keep reports/classes available
+  qa:
+    name: Test and SonarCloud
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '17'
+          cache: maven
 
-      - name: Cache Maven packages
-        uses: actions/cache@v3
+      # OPTIONAL: Create/ensure project exists and default branch maps to GitHub "main"
+      - name: Setup SonarCloud project
+        id: setupSonar
+        uses: nelsoncanarinho/setup-sonar@v1.0.0
         with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      - name: Run Tests
+      - name: Run Unit Tests
         run: mvn -B test
 
-  # SonarCloud Analysis
-  sonar:
-    needs: tests
-    name: SonarCloud Analysis
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Cache SonarCloud packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: |
-            ${{ runner.os }}-sonar
-
-      - name: Cache Maven packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
-
-      # Debug step to confirm values (without showing token)
-      - name: Debug SonarCloud values
+      # If JaCoCo is configured in pom, verify will produce coverage before sonar
+      - name: SonarCloud Scan (Maven)
         run: |
-          echo "Project Key: 'Hands-on-ci-cd-for-springboot-apps'"
-          echo "Organization: 'Narasimha142'"
-          echo "Branch: 'main'"
-
-      - name: Analyze with SonarCloud
-        run: |
-          mvn -B verify sonar:sonar \
-            -Dsonar.projectKey=Hands-on-ci-cd-for-springboot-apps \
-            -Dsonar.organization=Narasimha142 \
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.login=$SONAR_TOKEN \
-            -Dsonar.branch.name=main
+          mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+            -Dsonar.organization=${{ steps.setupSonar.outputs.SONAR_ORGANIZATION }} \
+            -Dsonar.projectKey=${{ steps.setupSonar.outputs.SONAR_PROJECT_KEY }} \
+            -Dsonar.host.url=https://sonarcloud.io
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Build the JAR
   build:
-    needs: sonar
-    name: Build
+    name: Build artifact
+    needs: qa
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '17'
-
-      - name: Cache Maven packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+          cache: maven
 
       - name: Build with Maven
         run: mvn -B package -DskipTests --file pom.xml

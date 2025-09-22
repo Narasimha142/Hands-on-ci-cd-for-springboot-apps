@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  # Unit tests job
+  # Unit Tests
   tests:
     name: Unit Tests
     runs-on: ubuntu-latest
@@ -34,7 +34,7 @@ jobs:
       - name: Run Unit Tests
         run: mvn -B test
 
-  # SonarCloud analysis job
+  # SonarCloud Analysis
   sonar:
     needs: tests
     name: SonarCloud Analysis
@@ -76,7 +76,7 @@ jobs:
           -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.login=$SONAR_TOKEN
 
-  # Build job
+  # Build
   build:
     needs: sonar
     name: Build

@@ -1,8 +1,6 @@
 name: CI/CD Pipeline
 on:
-  # Manually trigger workflow runs
-  workflow_dispatch:
-  # Trigger the workflow on push from the main branch
+  workflow_dispatch: # Manually trigger
   push:
     branches:
       - main
@@ -17,6 +15,7 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v3
         with:
+          distribution: 'temurin'
           java-version: '11'
       - name: Cache Maven packages
         uses: actions/cache@v3
@@ -37,6 +36,7 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v3
         with:
+          distribution: 'temurin'
           java-version: '11'
       - name: Cache SonarCloud packages
         uses: actions/cache@v3
@@ -45,7 +45,7 @@ jobs:
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
       - name: Cache Maven packages
-        uses: actions/cache@v3   # ✅ updated from v1 → v3
+        uses: actions/cache@v3
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -66,6 +66,7 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v3
         with:
+          distribution: 'temurin'
           java-version: '11'
       - name: Cache Maven packages
         uses: actions/cache@v3

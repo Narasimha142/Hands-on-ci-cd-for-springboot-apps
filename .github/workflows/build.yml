@@ -7,6 +7,7 @@ on:
       - main
 
 jobs:
+  # ---------------- Tests ----------------
   tests:
     name: Unit tests
     runs-on: ubuntu-latest
@@ -26,6 +27,7 @@ jobs:
       - name: Run Tests
         run: mvn -B test
 
+  # ---------------- SonarCloud ----------------
   sonar:
     needs: tests
     name: SonarCloud analysis
@@ -50,16 +52,16 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
       - name: Analyze with SonarCloud
-        if: ${{ secrets.SONAR_TOKEN }}
+        if: ${{ secrets.SONAR_TOKEN }} # Step runs only if secret exists
         run: mvn -B verify sonar:sonar \
           -Dsonar.projectKey=Narasimha142_Hands-on-ci-cd-for-springboot-apps \
           -Dsonar.organization=narasimha142 \
           -Dsonar.host.url=https://sonarcloud.io \
-          -Dsonar.login=$SONAR_TOKEN
+          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
+  # ---------------- Build ----------------
   build:
     needs: [tests, sonar]
     name: Build
@@ -85,6 +87,7 @@ jobs:
           name: artifact
           path: target/demo-0.0.1-SNAPSHOT.jar
 
+  # ---------------- Deploy ----------------
   deploy:
     needs: build
     name: Deploy
